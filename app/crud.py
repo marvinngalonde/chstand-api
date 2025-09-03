@@ -9,8 +9,8 @@ from .config import UPLOAD_DIR
 import json
 from typing import Optional
 
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+# if not os.path.exists(UPLOAD_DIR):
+#     os.makedirs(UPLOAD_DIR)
 
 pwd_context=  CryptContext(schemes=["bcrypt"], deprecated="auto")
 
