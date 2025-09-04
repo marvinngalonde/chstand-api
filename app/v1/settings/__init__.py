@@ -1,0 +1,1 @@
+# Settings module for API v1

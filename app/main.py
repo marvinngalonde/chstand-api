@@ -4,8 +4,12 @@ Main application module for FastAPI backend.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .auth.router import router as auth_router
-from .applications.router import router as apps_router
+from .v1.auth.router import router as auth_router
+from .v1.applications.router import router as apps_router
+from .v1.reports.router import router as reports_router
+from .v1.settings.router import router as settings_router
+from .v2.auth.router import router as v2_auth_router
+from .v2.applications.router import router as v2_apps_router
 from .config import CORS_ORIGINS
 from fastapi.staticfiles import StaticFiles
 
@@ -21,8 +25,12 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(auth_router)
-app.include_router(apps_router)
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(apps_router, prefix="/api/v1")
+app.include_router(reports_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
+app.include_router(v2_auth_router, prefix="/api/v2")
+app.include_router(v2_apps_router, prefix="/api/v2")
 
 # app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
