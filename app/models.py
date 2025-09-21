@@ -6,6 +6,17 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .db import Base
 
+class Company(Base):
+    __tablename__ = "companies"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), unique=True, index=True, nullable=False)
+    description = Column(Text, nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    address = Column(Text, nullable=True)
+    is_active = Column(Integer, default=1)  # Using Integer for better compatibility
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
@@ -14,12 +25,15 @@ class User(Base):
     last_name =Column(String(200), nullable=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="APPLICANT")  # APPLICANT or ADMIN
+    company_id = Column(Integer, ForeignKey("companies.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    company = relationship("Company", backref="users")
 
 class Application(Base):
     __tablename__ = "applications"
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     council_waiting_list_number = Column(String(100), nullable=True)
     name = Column(String(100))
     surname = Column(String(100))
@@ -35,18 +49,18 @@ class Application(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", backref="applications")
-    next_of_kin = relationship("NextOfKin", back_populates="application", uselist=False)
-    spouse = relationship("Spouse", uselist=False, back_populates="application")
-    beneficiaries = relationship("Beneficiary", back_populates="application")
-    documents = relationship("Document", back_populates="application")
-    payments = relationship("Payment", back_populates="application")
+    next_of_kin = relationship("NextOfKin", back_populates="application", uselist=False, cascade="all, delete-orphan")
+    spouse = relationship("Spouse", uselist=False, back_populates="application", cascade="all, delete-orphan")
+    beneficiaries = relationship("Beneficiary", back_populates="application", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="application", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="application", cascade="all, delete-orphan")
 
 
 
 class NextOfKin(Base):
     __tablename__ = "next_of_kin"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"))
 
     name = Column(String(100))
     surname = Column(String(100))
@@ -63,7 +77,7 @@ class NextOfKin(Base):
 class Spouse(Base):
     __tablename__ = "spouses"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"))
 
     name = Column(String(100))
     surname = Column(String(100))
@@ -76,7 +90,7 @@ class Spouse(Base):
 class Beneficiary(Base):
     __tablename__ = "beneficiaries"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"))
 
     name = Column(String(100))
     dob = Column(Date)
@@ -88,7 +102,7 @@ class Beneficiary(Base):
 class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"))
 
     kind = Column(String(50))  # ID_SCAN, PROOF_OF_RESIDENCE, PAYSLIP, SIGNATURE
     path = Column(String(500))  # file system path or cloud URL
@@ -99,7 +113,7 @@ class Document(Base):
 class Payment(Base):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, index=True)
-    application_id = Column(Integer, ForeignKey("applications.id"))
+    application_id = Column(Integer, ForeignKey("applications.id", ondelete="CASCADE"))
 
     amount = Column(Float)
     currency = Column(String(10), default="USD")
@@ -114,7 +128,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     id = Column(Integer, primary_key=True, index=True)
 
-    actor_user_id = Column(Integer, ForeignKey("users.id"))
+    actor_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     action = Column(String(100))  # e.g. APPROVE_APPLICATION, REJECT_APPLICATION
     target_id = Column(Integer)   # ID of the application or document affected
     meta = Column(Text)           # JSON or text with details

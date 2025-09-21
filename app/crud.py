@@ -15,6 +15,45 @@ from typing import Optional
 pwd_context=  CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 BLOB_TOKEN = os.getenv("BLOB_READ_WRITE_TOKEN")
+BLOB_API_URL = "https://blob.vercel-storage.com/upload"
+
+
+# ------------------ COMPANIES ------------------
+def create_company(db: Session, company: schemas.CompanyCreate):
+    db_company = models.Company(**company.dict())
+    db.add(db_company)
+    db.commit()
+    db.refresh(db_company)
+    return db_company
+
+def get_company_by_id(db: Session, company_id: int):
+    return db.query(models.Company).filter(models.Company.id == company_id).first()
+
+def get_company_by_name(db: Session, name: str):
+    return db.query(models.Company).filter(models.Company.name == name).first()
+
+def get_companies(db: Session, skip: int = 0, limit: int = 100, active_only: bool = True):
+    query = db.query(models.Company)
+    if active_only:
+        query = query.filter(models.Company.is_active == 1)
+    return query.offset(skip).limit(limit).all()
+
+def update_company(db: Session, company_id: int, company_update: schemas.CompanyUpdate):
+    company = db.query(models.Company).filter(models.Company.id == company_id).first()
+    if company:
+        for key, value in company_update.dict(exclude_unset=True).items():
+            setattr(company, key, value)
+        db.commit()
+        db.refresh(company)
+    return company
+
+def delete_company(db: Session, company_id: int):
+    company = db.query(models.Company).filter(models.Company.id == company_id).first()
+    if company:
+        db.delete(company)
+        db.commit()
+        return True
+    return False
 
 
 # ------------------ AUDIT LOGS ------------------
@@ -62,6 +101,7 @@ def create_user(db: Session, user: schemas.UserCreate):
         first_name=user.first_name,
         last_name=user.last_name,
         password_hash=hashed_password,
+        company_id=user.company_id,
     )
     db.add(db_user)
     db.commit()
@@ -71,6 +111,34 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def delete_user(db: Session, user_id: int):
+    """
+    Delete a user and all their related data (cascading delete).
+    This will automatically delete:
+    - All user's applications
+    - All related next of kin records
+    - All related spouse records
+    - All related beneficiary records
+    - All related document records
+    - All related payment records
+    - Sets audit log actor_user_id to NULL for this user
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+        return True
+    return False
+
+
+def get_users(db: Session, skip: int = 0, limit: int = 100, company_id: int = None):
+    """Get all users with optional company filtering"""
+    query = db.query(models.User)
+    if company_id:
+        query = query.filter(models.User.company_id == company_id)
+    return query.offset(skip).limit(limit).all()
 
 
 # ------------------ APPLICATIONS ------------------
@@ -105,7 +173,7 @@ def create_application(db: Session, app_data: schemas.ApplicationCreate, user_id
 
 def get_applications_by_user(db: Session, user_id: int):
     apps = db.query(models.Application).filter(models.Application.user_id == user_id).all()
-    return [schemas.ApplicationOut.model_validate(app) for app in apps]
+    return apps
 
 
 def get_application_by_id(db: Session, application_id: int):
@@ -116,7 +184,7 @@ def list_all_applications(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Application).offset(skip).limit(limit).all()
 
 
-def update_application_status(db: Session, application_id: int, status: str):
+def update_application_status(db: Session, application_id: int, status: str, actor_user_id: int = None):
     app = db.query(models.Application).filter(models.Application.id == application_id).first()
     if app:
         app.status = status
@@ -134,7 +202,7 @@ def update_application_status(db: Session, application_id: int, status: str):
 
 
 # ------------------ NEXT OF KIN ------------------
-def add_next_of_kin(db: Session, kin: schemas.NextOfKinCreate, application_id: int):
+def add_next_of_kin(db: Session, kin: schemas.NextOfKinCreate, application_id: int, actor_user_id: int = None):
     db_kin = models.NextOfKin(application_id=application_id, **kin.dict())
     db.add(db_kin)
     db.commit()
@@ -151,7 +219,7 @@ def add_next_of_kin(db: Session, kin: schemas.NextOfKinCreate, application_id: i
 
 
 # ------------------ SPOUSE ------------------
-def add_spouse(db: Session, spouse: schemas.SpouseCreate, application_id: int):
+def add_spouse(db: Session, spouse: schemas.SpouseCreate, application_id: int, actor_user_id: int = None):
     db_spouse = models.Spouse(application_id=application_id, **spouse.dict())
     db.add(db_spouse)
     db.commit()
@@ -168,7 +236,7 @@ def add_spouse(db: Session, spouse: schemas.SpouseCreate, application_id: int):
 
 
 # ------------------ BENEFICIARIES ------------------
-def add_beneficiary(db: Session, beneficiary: schemas.BeneficiaryCreate, application_id: int):
+def add_beneficiary(db: Session, beneficiary: schemas.BeneficiaryCreate, application_id: int, actor_user_id: int = None):
     db_ben = models.Beneficiary(application_id=application_id, **beneficiary.dict())
     db.add(db_ben)
     db.commit()
@@ -185,7 +253,7 @@ def add_beneficiary(db: Session, beneficiary: schemas.BeneficiaryCreate, applica
 
 
 # ------------------ PAYMENTS ------------------
-def add_payment(db: Session, payment: schemas.PaymentCreate, application_id: int):
+def add_payment(db: Session, payment: schemas.PaymentCreate, application_id: int, actor_user_id: int = None):
     db_payment = models.Payment(application_id=application_id, **payment.dict())
     db.add(db_payment)
     db.commit()

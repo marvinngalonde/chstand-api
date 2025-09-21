@@ -5,10 +5,10 @@ Application routes.
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session
 from typing import List
-from ... import crud, schemas
+from ... import crud, schemas, models
 from ...deps import get_db
-from ...auth.security import get_current_user, get_current_admin
-from fastapi import File,UploadFile
+from ..auth.security import get_current_user, get_current_admin
+from fastapi import File, UploadFile
 
 
 router = APIRouter(prefix="/applications", tags=["applications"])
@@ -82,7 +82,7 @@ def add_payment(
     return crud.add_payment(db, payment, application_id,actor_user_id=current_user.id)
 
 
-@router.get("/my", response_model=List[schemas.ApplicationOut])
+@router.get("/me", response_model=List[schemas.ApplicationOut])
 def get_my_applications(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -111,7 +111,7 @@ def get_application_detail(
 
 
 # ------------------- Admin Endpoints -------------------
-@router.get("/admin/all", response_model=List[schemas.ApplicationOut])
+@router.get("/", response_model=List[schemas.ApplicationOut])
 def list_all_applications(
     skip: int = 0,
     limit: int = 100,
@@ -124,17 +124,21 @@ def list_all_applications(
     return crud.list_all_applications(db, skip=skip, limit=limit)
 
 
-@router.put("/admin/{application_id}/status", response_model=schemas.ApplicationOut)
+@router.put("/{application_id}/status", response_model=schemas.ApplicationOut)
 def update_application_status(
     application_id: int,
-    status: str,  # expects "APPROVED" or "REJECTED"
+    status_data: dict,  # expects {"status": "APPROVED" or "REJECTED"}
     db: Session = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):
     """
     Approve or reject an application (Admin only).
     """
-    app = crud.update_application_status(db, application_id, status,actor_user_id=current_user.id)
+    status = status_data.get("status")
+    if status not in ["PENDING", "APPROVED", "REJECTED"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    app = crud.update_application_status(db, application_id, status, actor_user_id=current_admin.id)
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
     return app
@@ -197,7 +201,7 @@ def list_documents(
 @router.put("/{application_id}", response_model=schemas.ApplicationOut)
 def update_application(application_id: int, app_update: schemas.ApplicationUpdate,
                        db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    app = db.query(Application).filter(Application.id == application_id).first()
+    app = db.query(models.Application).filter(models.Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 
@@ -215,7 +219,7 @@ def update_application(application_id: int, app_update: schemas.ApplicationUpdat
 # ---- Delete application ----
 @router.delete("/{application_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_application(application_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    app = db.query(Application).filter(Application.id == application_id).first()
+    app = db.query(models.Application).filter(models.Application.id == application_id).first()
     if not app:
         raise HTTPException(status_code=404, detail="Application not found")
 

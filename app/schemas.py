@@ -7,11 +7,40 @@ from datetime import date, datetime
 from typing import Optional, List
 
 
+# ---------- Company ----------
+class CompanyBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    address: Optional[str] = None
+    is_active: Optional[int] = 1
+
+class CompanyCreate(CompanyBase):
+    pass
+
+class CompanyUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    address: Optional[str] = None
+    is_active: Optional[int] = None
+
+class CompanyOut(CompanyBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
 # ---------- User ----------
 class UserBase(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
+    company_id: Optional[int] = None
 
 class UserCreate(UserBase):
     password: str
@@ -22,7 +51,7 @@ class UserOut(UserBase):
     created_at: datetime
 
     class Config:
-        from_attributes= True
+        orm_mode = True
 
 
 # ---------- Application ----------
@@ -51,7 +80,7 @@ class ApplicationOut(ApplicationBase):
     created_at: datetime
 
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- NextOfKin ----------
@@ -81,7 +110,7 @@ class NextOfKinUpdate(BaseModel):
 class NextOfKinOut(NextOfKinBase):
     id: int
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- Spouse ----------
@@ -103,7 +132,7 @@ class SpouseUpdate(BaseModel):
 class SpouseOut(SpouseBase):
     id: int
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- Beneficiary ----------
@@ -123,7 +152,7 @@ class BeneficiaryUpdate(BaseModel):
 class BeneficiaryOut(BeneficiaryBase):
     id: int
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- Document ----------
@@ -141,7 +170,7 @@ class DocumentUpdate(BaseModel):
 class DocumentOut(DocumentBase):
     id: int
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- Payment ----------
@@ -164,7 +193,7 @@ class PaymentOut(PaymentBase):
     id: int
     created_at: datetime
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 
 # ---------- AuditLog ----------
@@ -182,7 +211,7 @@ class AuditLogOut(BaseModel):
     created_at: datetime
 
     class Config:
-        from_attributes= True
+        orm_mode = True
 
 
 # ------------------- Document -------------------
@@ -200,7 +229,7 @@ class DocumentOut(DocumentBase):
     path: str
 
     class Config:
-        from_attributes= True
+        orm_mode = True
 
 
 class UserUpdate(BaseModel):
@@ -208,4 +237,4 @@ class UserUpdate(BaseModel):
     role: Optional[str]
 
     class Config:
-        from_attributes= True
+        orm_mode = True

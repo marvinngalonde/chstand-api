@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .v1.auth.router import router as auth_router
 from .v1.applications.router import router as apps_router
+from .v1.companies.router import router as companies_router
 from .v1.reports.router import router as reports_router
 from .v1.settings.router import router as settings_router
 from .v2.auth.router import router as v2_auth_router
@@ -27,6 +28,7 @@ app.add_middleware(
 # Routers
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(apps_router, prefix="/api/v1")
+app.include_router(companies_router, prefix="/api/v1")
 app.include_router(reports_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(v2_auth_router, prefix="/api/v2")
